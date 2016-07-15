@@ -147,16 +147,16 @@ object Huffman {
     * the resulting list of characters.
     */
   def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
-    def decoder(subTree: CodeTree, remaining: List[Bit], accumulated: List[Char]): List[Char] = {
+    def decodeSecret(subTree: CodeTree, remaining: List[Bit], accumulated: List[Char]): List[Char] = {
       (subTree, remaining) match {
         case (subTree: Leaf, Nil)       => accumulated :+ subTree.char
-        case (subTree: Leaf, rest)      => decoder(tree, rest, accumulated :+ subTree.char)
-        case (subTree: Fork, 0 :: rest) => decoder(subTree.left, rest, accumulated)
-        case (subTree: Fork, 1 :: rest) => decoder(subTree.right, rest, accumulated)
+        case (subTree: Leaf, rest)      => decodeSecret(tree, rest, accumulated :+ subTree.char)
+        case (subTree: Fork, 0 :: rest) => decodeSecret(subTree.left, rest, accumulated)
+        case (subTree: Fork, 1 :: rest) => decodeSecret(subTree.right, rest, accumulated)
         case (_, _)                     => Nil
       }
     }
-    decoder(tree, bits, List())
+    decodeSecret(tree, bits, List())
   }
 
   /**
@@ -184,7 +184,14 @@ object Huffman {
     * This function encodes `text` using the code tree `tree`
     * into a sequence of bits.
     */
-  def encode(tree: CodeTree)(text: List[Char]): List[Bit] = ???
+  def encode(tree: CodeTree)(text: List[Char]): List[Bit] = {
+    def encodeText(subTree: CodeTree, char: Char, accumulated: List[Bit]): List[Bit] = subTree match {
+      case subTree: Leaf                                        => accumulated
+      case subTree: Fork if chars(subTree.left) contains(char)  => encodeText(subTree.left, char, accumulated :+ 0)
+      case subTree: Fork                                        => encodeText(subTree.right, char, accumulated :+ 1)
+    }
+    text flatMap {c => encodeText(tree, c, List())}
+  }
 
   // Part 4b: Encoding using code table
 
