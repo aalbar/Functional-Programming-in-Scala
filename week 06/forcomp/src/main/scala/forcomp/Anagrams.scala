@@ -54,15 +54,15 @@ object Anagrams {
    *    List(('a', 1), ('e', 1), ('t', 1)) -> Seq("ate", "eat", "tea")
    *
    */
-  lazy val dictionaryByOccurrences: Map[Occurrences, List[Word]] = ???
+  lazy val dictionaryByOccurrences: Map[Occurrences, List[Word]] = dictionary.groupBy(wordOccurrences).withDefaultValue(List())
 
   /** Returns all the anagrams of a given word. */
-  def wordAnagrams(word: Word): List[Word] = ???
+  def wordAnagrams(word: Word): List[Word] = dictionaryByOccurrences(wordOccurrences(word))
 
   /** Returns the list of all subsets of the occurrence list.
    *  This includes the occurrence itself, i.e. `List(('k', 1), ('o', 1))`
    *  is a subset of `List(('k', 1), ('o', 1))`.
-   *  It also include the empty subset `List()`.
+   *  It also includes the empty subset `List()`.
    *
    *  Example: the subsets of the occurrence list `List(('a', 2), ('b', 2))` are:
    *
@@ -81,7 +81,17 @@ object Anagrams {
    *  Note that the order of the occurrence list subsets does not matter -- the subsets
    *  in the example above could have been displayed in some other order.
    */
-  def combinations(occurrences: Occurrences): List[Occurrences] = ???
+  def combinations(occurrences: Occurrences): List[Occurrences] = occurrences match {
+    case List()       => List(List())
+    case head :: tail => {
+      val tailCombinations = combinations(tail)
+      tailCombinations ++
+        (for {
+          o <- tailCombinations
+          i <- 1 to head._2
+      } yield (head._1, i) :: o)
+    }
+  }
 
   /** Subtracts occurrence list `y` from occurrence list `x`.
    *
@@ -93,7 +103,14 @@ object Anagrams {
    *  Note: the resulting value is an occurrence - meaning it is sorted
    *  and has no zero-entries.
    */
-  def subtract(x: Occurrences, y: Occurrences): Occurrences = ???
+  def subtract(x: Occurrences, y: Occurrences): Occurrences =
+    x.foldLeft(List[(Char, Int)]())((a: List[(Char, Int)], b: (Char, Int)) => {
+      y.filter(_._1 == b._1) match {
+        case List()             => a :+ b
+        case (h, b._2) :: tail  => a
+        case head :: tail       => a :+ (head._1, b._2 - head._2)
+      }
+    })
 
   /** Returns a list of all anagram sentences of the given sentence.
    *
@@ -135,5 +152,19 @@ object Anagrams {
    *
    *  Note: There is only one anagram of an empty sentence.
    */
-  def sentenceAnagrams(sentence: Sentence): List[Sentence] = ???
+  def sentenceAnagrams(sentence: Sentence): List[Sentence] = {
+    def sentenceAnagrams(occurrences: Occurrences): List[Sentence] = {
+      if (occurrences.isEmpty)
+        List(List())
+      else
+        for {
+          combination <- combinations(occurrences)
+          word <- dictionaryByOccurrences(combination)
+          rest <- sentenceAnagrams(subtract(occurrences, combination))
+        } yield word :: rest
+    }
+
+    sentenceAnagrams(sentenceOccurrences(sentence))
+  }
+
 }
